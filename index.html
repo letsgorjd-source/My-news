@@ -8,8 +8,10 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        body { margin: 0; background: #0A0A0F; color: #fff; font-family: sans-serif; }
-        .btn { padding: 10px 16px; border-radius: 10px; border: none; color: #fff; cursor: pointer; font-weight: 600; }
+        body { margin: 0; background: #0A0A0F; color: #fff; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        .btn { padding: 10px 18px; border-radius: 12px; border: none; color: #fff; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; }
+        .card { padding: 15px 0; border-bottom: 1px solid #1A1A25; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -24,7 +26,7 @@
             { id: "climate", label: "🌍 기후", color: "#F59E0B" },
         ];
 
-        // 여기에 아까 복사한 Gemini API 키를 넣으세요!
+        // ⚠️ 주의: 키를 넣을 때 따옴표 사이에 빈칸 없이 넣어주세요!
         const API_KEY = "AIzaSyANK_0Uf9z_QdwaklT83SERmcjdaqwnkgI";
 
         function NewsApp() {
@@ -39,12 +41,15 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `JSON array format: [ { "title": "korean title", "summary": "korean summary", "source": "name", "time": "time" } ]. 4 news for ${id} category.` }] }]
+                        contents: [{ parts: [{ text: `You are a news curator. Return ONLY a JSON array for '${id}' news. Format: [ { "title": "korean title", "summary": "korean summary", "source": "source", "time": "time" } ]. No markdown.` }] }]
                     })
                 });
+                
+                if (!res.ok) throw new Error("API_ERROR");
                 const result = await res.json();
                 const text = result.candidates[0].content.parts[0].text;
-                return JSON.parse(text.match(/\[[\s\S]*\]/)[0]);
+                const cleanJson = text.match(/\[[\s\S]*\]/)[0];
+                return JSON.parse(cleanJson);
             };
 
             const load = async (id) => {
@@ -53,16 +58,18 @@
                 try {
                     const items = await fetchNews(id);
                     setData(prev => ({ ...prev, [id]: items }));
-                } catch (e) { alert("오류 발생!"); }
+                } catch (e) { 
+                    alert("뉴스를 가져오지 못했습니다. API 키나 네트워크를 확인해주세요.");
+                }
                 setLoading(false);
             };
 
             useEffect(() => { load("hot"); }, []);
 
             return (
-                <div style={{ padding: "20px" }}>
-                    <h1>오늘의 세계</h1>
-                    <div style={{ display: "flex", gap: "10px", overflowX: "auto", marginBottom: "20px" }}>
+                <div style={{ padding: "30px 20px" }}>
+                    <h1 style={{fontSize: "26px", fontWeight: "800", marginBottom: "25px"}}>오늘의 세계</h1>
+                    <div style={{ display: "flex", gap: "8px", overflowX: "auto", marginBottom: "30px", paddingBottom: "5px" }}>
                         {CATEGORIES.map(c => (
                             <button key={c.id} className="btn" style={{ background: active === c.id ? c.color : "#1A1A25" }}
                                     onClick={() => { setActive(c.id); setSelected(null); load(c.id); }}>
@@ -70,16 +77,21 @@
                             </button>
                         ))}
                     </div>
-                    {loading ? <p>로딩 중...</p> : selected ? (
+                    {loading ? (
+                        <div style={{textAlign: "center", marginTop: "100px", color: "#444"}}>AI 브리핑 생성 중...</div>
+                    ) : selected ? (
                         <div>
-                            <button onClick={() => setSelected(null)} style={{color: "#888", background: "none", border: "none"}}>← 뒤로</button>
-                            <h2>{selected.title}</h2>
-                            <p style={{lineHeight: "1.6", color: "#ccc"}}>{selected.summary}</p>
+                            <button onClick={() => setSelected(null)} style={{color: "#666", background: "none", border: "none", padding: "0 0 20px 0", fontSize: "16px"}}>← 목록으로</button>
+                            <h2 style={{fontSize: "22px", lineHeight: "1.5", marginBottom: "20px"}}>{selected.title}</h2>
+                            <div style={{padding: "25px", background: "#111118", borderRadius: "20px", border: "1px solid #1A1A25", lineHeight: "1.8", color: "#ccc"}}>
+                                {selected.summary}
+                            </div>
                         </div>
                     ) : (
                         (data[active] || []).map((item, i) => (
-                            <div key={i} onClick={() => setSelected(item)} style={{ padding: "15px 0", borderBottom: "1px solid #222" }}>
-                                <h3 style={{fontSize: "16px"}}>{item.title}</h3>
+                            <div key={i} className="card" onClick={() => setSelected(item)}>
+                                <h3 style={{fontSize: "17px", fontWeight: "500", margin: "0 0 8px 0", lineHeight: "1.4"}}>{item.title}</h3>
+                                <span style={{fontSize: "12px", color: "#444"}}>{item.source} · {item.time}</span>
                             </div>
                         ))
                     )}
